@@ -1,0 +1,20 @@
+Project initialization
+Folder structure
+requirements.txt
+Configuration (.env and settings)
+Database connection
+SQLAlchemy setup
+Alembic migrations
+Base models
+Authentication
+Authorization (RBAC)
+User module
+Project module
+Board & Columns
+Task module
+Comments & Attachments
+Notifications
+Dashboard
+Reports
+Testing
+Dockerization

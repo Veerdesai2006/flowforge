@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+<!-- ====================================================== -->
+<!-- Page Title -->
+<!-- ====================================================== -->
+
+{% block title %}
+
+Login | FlowForge
+
+{% endblock %}
+
+
+<!-- ====================================================== -->
+<!-- Page Content -->
+<!-- ====================================================== -->
+
+{% block content %}
+
+<div class="row justify-content-center">
+
+    <div class="col-md-6 col-lg-5">
+
+        <div class="card shadow-lg border-0">
+
+            <div class="card-body p-5">
+
+                <!-- Heading -->
+
+                <h2 class="text-center fw-bold mb-2">
+
+                    Welcome Back 👋
+
+                </h2>
+
+                <p class="text-center text-muted mb-4">
+
+                    Login to your FlowForge account
+
+                </p>
+
+                <!-- Login Form -->
+
+                <form id="loginForm">
+
+                    <!-- Email -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+
+                            Email
+
+                        </label>
+
+                        <input
+                            type="email"
+                            id="email"
+                            class="form-control"
+                            placeholder="Enter your email"
+                            required>
+
+                    </div>
+
+                    <!-- Password -->
+
+                    <div class="mb-4">
+
+                        <label class="form-label">
+
+                            Password
+
+                        </label>
+
+                        <input
+                            type="password"
+                            id="password"
+                            class="form-control"
+                            placeholder="Enter your password"
+                            required>
+
+                    </div>
+
+                    <!-- Login Button -->
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary w-100">
+
+                        Login
+
+                    </button>
+
+                </form>
+
+                <hr>
+
+                <div class="text-center">
+
+                    Don't have an account?
+
+                    <a href="/register">
+
+                        Register
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+<!-- ====================================================== -->
+<!-- Page JavaScript -->
+<!-- ====================================================== -->
+
+{% block scripts %}
+
+<script>
+
+document
+    .getElementById("loginForm")
+    .addEventListener("submit", function(event){
+
+        /*
+            Prevent the browser from
+            refreshing the page.
+
+            Later we'll call our
+            FastAPI login API.
+        */
+
+        event.preventDefault();
+
+        console.log("Login button clicked.");
+
+    });
+
+</script>
+
+{% endblock %}
