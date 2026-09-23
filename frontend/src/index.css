@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0b0d12;
+  --color-bg2: #141820;
+  --color-bg3: #1c2230;
+  --color-bg4: #242c3d;
+  --color-accent: #6c5ce7;
+  --color-accent2: #a29bfe;
+  --color-green: #00b894;
+  --color-red: #ff6b6b;
+  --color-yellow: #fdcb6e;
+  --color-cyan: #0984e3;
+  --color-textMain: #edf2f7;
+  --color-text2: #a0aec0;
+  --color-text3: #718096;
+  --color-border: rgba(255,255,255,.08);
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-textMain font-sans antialiased min-h-screen;
+  }
+}

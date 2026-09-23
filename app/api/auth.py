@@ -19,7 +19,7 @@ Responsibilities
 
 from fastapi import APIRouter
 from fastapi import Depends
-from fastapi import HTTPException,status
+from fastapi import HTTPException, status, Form
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -117,86 +117,39 @@ Benefit: You can unit-test UserService by passing a fake/mock repository. You do
     response_model=LoginResponse,
 )
 def login(
-    email: str,
-    password: str,
+    username: str = Form(default=None),
+    password: str = Form(default=None),
     db: Session = Depends(get_db),
 ):
     """
-    Authenticate a user.
-
-    Steps
-
-    1. Find user by email
-    2. Verify password
-    3. Generate JWT tokens
-    4. Return tokens + user
+    Authenticate a user via form data (for Jinja2 frontend)
+    or query params (for Swagger testing).
     """
 
     repository = UserRepository(db)
-
     service = UserService(repository)
 
-    # -----------------------------------------
-    # Find user
-    # -----------------------------------------
-
-    user = service.get_user_by_email(email)
+    user = service.get_user_by_email(username)
 
     if user is None:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
 
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password.",
-        )
+    if not verify_password(password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
 
-    # -----------------------------------------
-    # Verify password
-    # -----------------------------------------
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated.")
 
-    if not verify_password(
-        password,
-        user.password,
-    ):
-
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password.",
-        )
-
-
-    # -----------------------------------------
-    # Create JWT Tokens
-    # -----------------------------------------
-
-    # JWT payload.
-    # "sub" means subject.
-    # We store the user's ID as the subject.
-    # str() converts the integer ID into a string,
-    # which is the standard representation for JWT subjects.
-    access_token = create_access_token(
-        data={
-        "sub": str(user.id)
-    },
-    )
-
-    refresh_token = create_refresh_token(
-        data={
-        "sub": str(user.id)
-    }
-    )
-
-    # -----------------------------------------
-    # Response
-    # -----------------------------------------
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
     return LoginResponse(
-
         access_token=access_token,
-
         refresh_token=refresh_token,
-
         user=UserResponse.model_validate(user),
     )
+
+
 # ======================================================
 # Refresh Access Token
 # ======================================================

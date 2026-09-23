@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Boards — FlowForge{% endblock %}
+
+{% block content %}
+<div class="ff-layout">
+    <aside class="ff-sidebar">
+        <a href="/dashboard" class="ff-sidebar__item">
+            <i class="bi bi-arrow-left"></i> Back to Topics
+        </a>
+        <a href="/profile" class="ff-sidebar__item">
+            <i class="bi bi-person-circle"></i> My Profile
+        </a>
+        <div class="ff-sidebar__label">Actions</div>
+        <button class="ff-sidebar__item" id="sideNewBoard">
+            <i class="bi bi-plus-circle"></i> New Board
+        </button>
+        <div class="ff-sidebar__label">Account</div>
+        <button class="ff-sidebar__item" onclick="Auth.logout()">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+    </aside>
+
+    <main class="ff-main">
+        <div class="ff-page-header">
+            <div>
+                <h1 class="ff-page-title" id="pageTitle">Boards</h1>
+                <p class="ff-page-sub" id="pageSub">Manage boards inside this Topic</p>
+            </div>
+            <button class="ff-btn ff-btn-primary" id="newBoardBtnTop">
+                <i class="bi bi-plus-lg"></i> New Board
+            </button>
+        </div>
+
+        <div id="boardsLoading" style="text-align:center;padding:3rem;">
+            <div class="ff-spinner"></div>
+        </div>
+
+        <div id="boardsGrid" class="ff-grid" style="display:none;"></div>
+
+        <div id="emptyState" class="ff-empty" style="display:none;">
+            <i class="bi bi-kanban"></i>
+            <p style="font-size:1rem;font-weight:600;color:var(--text-secondary);margin-bottom:.5rem;">No boards yet</p>
+            <p>Create your first board to start managing tasks.</p>
+            <button class="ff-btn ff-btn-primary mt-4" onclick="openBoardModal()">
+                <i class="bi bi-plus-lg"></i> Create Board
+            </button>
+        </div>
+    </main>
+</div>
+
+<!-- Create Board Modal -->
+<div class="ff-modal-backdrop" id="boardModal">
+    <div class="ff-modal">
+        <div class="ff-modal-header">
+            <h2 class="ff-modal-title">Create New Board</h2>
+            <button class="ff-modal-close" onclick="closeBoardModal()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div id="modalAlert" class="ff-alert ff-alert-error"></div>
+        <form id="boardForm">
+            <div class="ff-form-group">
+                <label class="ff-label" for="boardName">Board Name *</label>
+                <input type="text" id="boardName" class="ff-input" placeholder="e.g. Sprint 1" required minlength="1" maxlength="100">
+            </div>
+            <div class="ff-form-group">
+                <label class="ff-label" for="boardDesc">Description (optional)</label>
+                <textarea id="boardDesc" class="ff-input" placeholder="What will this board track?" maxlength="500"></textarea>
+            </div>
+            <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+                <button type="button" class="ff-btn ff-btn-outline" onclick="closeBoardModal()">Cancel</button>
+                <button type="submit" class="ff-btn ff-btn-primary" id="createBoardBtn">
+                    <i class="bi bi-check-lg"></i> Create Board
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    if (!requireAuth()) { /* guard */ }
+
+    // Get project_id from the URL path e.g. /projects/3/boards
+    const PROJECT_ID = parseInt(window.location.pathname.split('/')[2]);
+
+    async function loadBoards() {
+        const res = await api(`/api/boards/project/${PROJECT_ID}`);
+        if (!res) return;
+
+        const boards = await res.json();
+        const loading = document.getElementById('boardsLoading');
+        const grid    = document.getElementById('boardsGrid');
+        const empty   = document.getElementById('emptyState');
+
+        loading.style.display = 'none';
+
+        if (boards.length === 0) {
+            empty.style.display = 'block';
+            return;
+        }
+
+        grid.style.display = 'grid';
+
+        const colors = ['#6c63ff','#22c55e','#f59e0b','#06b6d4','#a78bfa','#ef4444'];
+        const icons  = ['bi-kanban','bi-layout-three-columns','bi-list-check','bi-bug','bi-lightning','bi-stars'];
+
+        grid.innerHTML = boards.map((b, i) => `
+            <a href="/boards/${b.id}/tasks" class="ff-project-card" style="text-decoration:none;">
+                <div class="ff-project-icon" style="background:linear-gradient(135deg,${colors[i%colors.length]},${colors[(i+3)%colors.length]});">
+                    <i class="bi ${icons[i%icons.length]}" style="color:#fff;"></i>
+                </div>
+                <div class="ff-card__title">${escapeHtml(b.name)}</div>
+                <div class="ff-card__desc" style="margin-bottom:1rem;">
+                    ${b.description ? escapeHtml(b.description) : '<span style="color:var(--text-muted);font-style:italic;">No description</span>'}
+                </div>
+                <div style="display:flex;gap:.5rem;margin-top:auto;">
+                    <button class="ff-btn ff-btn-outline ff-btn-sm" onclick="event.preventDefault(); event.stopPropagation(); deleteBoard(${b.id}, this)">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </div>
+            </a>
+        `).join('') + `
+            <div class="ff-project-card ff-add-card" onclick="openBoardModal()">
+                <i class="bi bi-plus-circle"></i>
+                <span style="font-size:.875rem;font-weight:600;">New Board</span>
+            </div>
+        `;
+    }
+
+    async function deleteBoard(boardId, btn) {
+        if (!confirm('Delete this board? This cannot be undone.')) return;
+        btn.disabled = true;
+        const res = await api(`/api/boards/${boardId}`, { method: 'DELETE' });
+        if (res && res.status === 204) {
+            toast('Board deleted.');
+            loadBoards();
+        } else {
+            toast('Failed to delete board.', 'error');
+            btn.disabled = false;
+        }
+    }
+
+    function openBoardModal() {
+        document.getElementById('boardModal').classList.add('open');
+        document.getElementById('boardName').focus();
+    }
+
+    function closeBoardModal() {
+        document.getElementById('boardModal').classList.remove('open');
+        document.getElementById('boardForm').reset();
+        document.getElementById('modalAlert').classList.remove('show');
+    }
+
+    document.getElementById('boardForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('createBoardBtn');
+        const alertEl = document.getElementById('modalAlert');
+        alertEl.classList.remove('show');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating…';
+
+        const res = await api('/api/boards', {
+            method: 'POST',
+            body: JSON.stringify({
+                name:        document.getElementById('boardName').value,
+                description: document.getElementById('boardDesc').value || null,
+                project_id:  PROJECT_ID,
+            })
+        });
+
+        if (!res || !res.ok) {
+            const err = await res?.json();
+            alertEl.textContent = err?.detail || 'Failed to create board.';
+            alertEl.classList.add('show');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Create Board';
+            return;
+        }
+
+        toast('Board created!');
+        closeBoardModal();
+        loadBoards();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Create Board';
+    });
+
+    ['newBoardBtnTop','sideNewBoard'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', openBoardModal);
+    });
+
+    document.getElementById('boardModal').addEventListener('click', function(e) {
+        if (e.target === this) closeBoardModal();
+    });
+
+    function escapeHtml(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    loadBoards();
+</script>
+{% endblock %}

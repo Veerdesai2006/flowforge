@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — FlowForge{% endblock %}
+
+{% block content %}
+<div class="ff-layout">
+    <!-- Sidebar -->
+    <aside class="ff-sidebar">
+        <a href="/dashboard" class="ff-sidebar__item active">
+            <i class="bi bi-grid-1x2-fill"></i> Dashboard
+        </a>
+        <a href="/profile" class="ff-sidebar__item">
+            <i class="bi bi-person-circle"></i> My Profile
+        </a>
+
+        <div class="ff-sidebar__label">Workspace</div>
+        <button class="ff-sidebar__item" id="newTopicBtn">
+            <i class="bi bi-plus-circle"></i> New Topic
+        </button>
+
+        <div class="ff-sidebar__label">Account</div>
+        <button class="ff-sidebar__item" onclick="Auth.logout()">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+    </aside>
+
+    <!-- Main -->
+    <main class="ff-main">
+        <div class="ff-page-header">
+            <div>
+                <h1 class="ff-page-title" id="greetingTitle">My Topics</h1>
+                <p class="ff-page-sub">Click a Topic to view its boards</p>
+            </div>
+            <button class="ff-btn ff-btn-primary" id="newTopicBtnTop">
+                <i class="bi bi-plus-lg"></i> New Topic
+            </button>
+        </div>
+
+        <div id="TopicsLoading" style="text-align:center;padding:3rem;">
+            <div class="ff-spinner"></div>
+        </div>
+
+        <div id="TopicsGrid" class="ff-grid" style="display:none;"></div>
+
+        <div id="emptyState" class="ff-empty" style="display:none;">
+            <i class="bi bi-folder-plus"></i>
+            <p style="font-size:1rem;font-weight:600;color:var(--text-secondary);margin-bottom:.5rem;">No Topics yet</p>
+            <p>Create your first Topic to get started.</p>
+            <button class="ff-btn ff-btn-primary mt-4" onclick="openTopicModal()">
+                <i class="bi bi-plus-lg"></i> Create Topic
+            </button>
+        </div>
+    </main>
+</div>
+
+<!-- Create Topic Modal -->
+<div class="ff-modal-backdrop" id="TopicModal">
+    <div class="ff-modal">
+        <div class="ff-modal-header">
+            <h2 class="ff-modal-title">Create New Topic</h2>
+            <button class="ff-modal-close" onclick="closeTopicModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div id="modalAlert" class="ff-alert ff-alert-error"></div>
+
+        <form id="TopicForm">
+            <div class="ff-form-group">
+                <label class="ff-label" for="TopicName">Topic Name *</label>
+                <input type="text" id="TopicName" class="ff-input" placeholder="e.g. Mobile App Redesign" required minlength="2" maxlength="100">
+            </div>
+            <div class="ff-form-group">
+                <label class="ff-label" for="TopicDesc">Description (optional)</label>
+                <textarea id="TopicDesc" class="ff-input" placeholder="What is this Topic about?" maxlength="500"></textarea>
+            </div>
+            <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+                <button type="button" class="ff-btn ff-btn-outline" onclick="closeTopicModal()">Cancel</button>
+                <button type="submit" class="ff-btn ff-btn-primary" id="createBtn">
+                    <i class="bi bi-check-lg"></i> Create Topic
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Redirect to login if not authenticated
+    if (!requireAuth()) { /* stops here */ }
+
+    const user = Auth.getUser();
+    if (user) {
+        const hour = new Date().getHours();
+        const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+        document.getElementById('greetingTitle').textContent = `${greeting}, ${user.first_name} 👋`;
+    }
+
+    // ── Load Topics ────────────────────────────────────────────
+    async function loadTopics() {
+        const res = await api('/api/projects');
+        if (!res) return;
+
+        const Topics = await res.json();
+        const loading = document.getElementById('TopicsLoading');
+        const grid    = document.getElementById('TopicsGrid');
+        const empty   = document.getElementById('emptyState');
+
+        loading.style.display = 'none';
+
+        if (Topics.length === 0) {
+            empty.style.display = 'block';
+            return;
+        }
+
+        grid.style.display = 'grid';
+
+        const colors = ['#6c63ff','#22c55e','#f59e0b','#06b6d4','#ef4444','#a78bfa'];
+        const icons  = ['bi-code-square','bi-phone','bi-globe','bi-lightning','bi-graph-up','bi-database'];
+
+        grid.innerHTML = Topics.map((p, i) => `
+            <a href="/projects/${p.id}/boards" class="ff-project-card" style="text-decoration:none;">
+                <div class="ff-project-icon" style="background:linear-gradient(135deg,${colors[i%colors.length]},${colors[(i+2)%colors.length]});">
+                    <i class="bi ${icons[i%icons.length]}" style="color:#fff;"></i>
+                </div>
+                <div class="ff-card__title">${escapeHtml(p.name)}</div>
+                <div class="ff-card__desc" style="margin-bottom:.75rem;">
+                    ${p.description ? escapeHtml(p.description) : '<span style="color:var(--text-muted);font-style:italic;">No description</span>'}
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;">
+                    <span class="ff-badge ff-badge-purple"><i class="bi bi-kanban me-1"></i> Boards</span>
+                    <i class="bi bi-arrow-right" style="color:var(--text-muted);"></i>
+                </div>
+            </a>
+        `).join('') + `
+            <div class="ff-project-card ff-add-card" onclick="openTopicModal()">
+                <i class="bi bi-plus-circle"></i>
+                <span style="font-size:.875rem;font-weight:600;">New Topic</span>
+            </div>
+        `;
+    }
+
+    // ── Topic Modal ────────────────────────────────────────────
+    function openTopicModal() {
+        document.getElementById('TopicModal').classList.add('open');
+        document.getElementById('TopicName').focus();
+    }
+
+    function closeTopicModal() {
+        document.getElementById('TopicModal').classList.remove('open');
+        document.getElementById('TopicForm').reset();
+        document.getElementById('modalAlert').classList.remove('show');
+    }
+
+    document.getElementById('TopicForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('createBtn');
+        const alertEl = document.getElementById('modalAlert');
+        alertEl.classList.remove('show');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating…';
+
+        const res = await api('/api/projects', {
+            method: 'POST',
+            body: JSON.stringify({
+                name:        document.getElementById('TopicName').value,
+                description: document.getElementById('TopicDesc').value || null,
+            })
+        });
+
+        if (!res || !res.ok) {
+            const err = await res?.json();
+            alertEl.textContent = err?.detail || 'Failed to create Topic.';
+            alertEl.classList.add('show');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Create Topic';
+            return;
+        }
+
+        toast('Topic created!');
+        closeTopicModal();
+        loadTopics();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Create Topic';
+    });
+
+    ['newTopicBtn','newTopicBtnTop'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', openTopicModal);
+    });
+
+    // Close modal on backdrop click
+    document.getElementById('TopicModal').addEventListener('click', function(e) {
+        if (e.target === this) closeTopicModal();
+    });
+
+    function escapeHtml(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    loadTopics();
+</script>
+{% endblock %}

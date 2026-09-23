@@ -13,13 +13,16 @@ from app.models.user import User
 from app.models.token_blocklist import TokenBlocklist
 
 # Future models
-# from app.models.project import Project
-# from app.models.board import Board
-# from app.models.task import Task
-# from app.models.comment import Comment
-# from app.models.attachment import Attachment
-# from app.models.notification import Notification
+from app.models.project import Project
+from app.models.board import Board
+from app.models.task import Task
+from app.models.activity import Activity
 
 __all__ = [
     "User",
+    "Project",
+    "Board",
+    "Task",
+    "TokenBlocklist",
+    "Activity",
 ]

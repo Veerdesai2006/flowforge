@@ -1,123 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-    <!-- ====================================================== -->
-    <!-- Basic Meta -->
-    <!-- ====================================================== -->
-
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FlowForge – Modern project management and Kanban boards for your team.">
+    <title>{% block title %}FlowForge{% endblock %}</title>
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <title>
-        {% block title %}
-            FlowForge
-        {% endblock %}
-    </title>
-
-    <!-- ====================================================== -->
-    <!-- Bootstrap 5 CSS -->
-    <!-- ====================================================== -->
-
-    <!--
-        Bootstrap gives us ready-made UI components.
-
-        Examples:
-            Buttons
-            Cards
-            Navbar
-            Tables
-            Grid System
-            Forms
-            Alerts
-    -->
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
-        rel="stylesheet">
-
-    <!-- ====================================================== -->
     <!-- Bootstrap Icons -->
-    <!-- ====================================================== -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 
-    <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <!-- Our Design System -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 
-    <!-- ====================================================== -->
-    <!-- Our CSS -->
-    <!-- ====================================================== -->
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', path='css/style.css') }}">
-
+    {% block head %}{% endblock %}
 </head>
+<body>
 
-<body class="bg-light">
+<!-- ===== Navbar (hidden on auth pages) ===== -->
+{% block navbar %}
+<nav class="ff-navbar">
+    <a href="/dashboard" class="ff-navbar__brand">⚡ FlowForge</a>
 
-<!-- ====================================================== -->
-<!-- Navbar -->
-<!-- ====================================================== -->
-
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-
-    <div class="container">
-
-        <a class="navbar-brand fw-bold"
-           href="/">
-
-            FlowForge
-
-        </a>
-
+    <div class="ff-navbar__actions" id="navActions">
+        <!-- Injected by JS after login check -->
     </div>
-
 </nav>
-
-<!-- ====================================================== -->
-<!-- Main Container -->
-<!-- ====================================================== -->
-
-<div class="container mt-5">
-
-    <!--
-        Every child page will insert its HTML here.
-    -->
-
-    {% block content %}
-
-    {% endblock %}
-
-</div>
-
-<!-- ====================================================== -->
-<!-- Bootstrap JS -->
-<!-- ====================================================== -->
-
-<script
-src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js">
-</script>
-
-<!-- ====================================================== -->
-<!-- Our JavaScript -->
-<!-- ====================================================== -->
-
-<script
-src="{{ url_for('static', path='js/app.js') }}">
-</script>
-
-<!-- ====================================================== -->
-<!-- Additional JS Block -->
-<!-- ====================================================== -->
-
-{% block scripts %}
-
 {% endblock %}
 
-</body>
+<!-- ===== Page Content ===== -->
+{% block content %}{% endblock %}
 
+<!-- ===== Toast Notification ===== -->
+<div id="ff-toast"></div>
+
+<!-- ===== Global JS Utilities ===== -->
+<script>
+    // ── Auth helpers ──────────────────────────────────────────────
+    const Auth = {
+        getToken()  { return localStorage.getItem('access_token'); },
+        getUser()   { try { return JSON.parse(localStorage.getItem('ff_user')); } catch { return null; } },
+        isLoggedIn(){ return !!this.getToken(); },
+        logout() {
+            const token = this.getToken();
+            if (token) {
+                fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).catch(() => {});
+            }
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('ff_user');
+            window.location.href = '/login';
+        }
+    };
+
+    // ── API helper (adds auth header automatically) ───────────────
+    async function api(path, options = {}) {
+        const token = Auth.getToken();
+        const headers = { 'Content-Type': 'application/json', ...options.headers };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch(path, { ...options, headers });
+
+        if (res.status === 401) {
+            Auth.logout();
+            return;
+        }
+
+        return res;
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────
+    function toast(msg, type = 'success') {
+        const el = document.getElementById('ff-toast');
+        el.textContent = msg;
+        el.className = `show ${type}`;
+        setTimeout(() => { el.className = ''; }, 3000);
+    }
+
+    // ── Navbar population ─────────────────────────────────────────
+    function populateNavbar() {
+        const actions = document.getElementById('navActions');
+        if (!actions) return;
+
+        if (Auth.isLoggedIn()) {
+            const user = Auth.getUser();
+            const initials = user ? (user.first_name[0] + user.last_name[0]).toUpperCase() : '?';
+            const avatar = user?.avatar_url
+                ? `<img src="${user.avatar_url}" class="ff-avatar-sm" onclick="window.location='/profile'" title="Profile">`
+                : `<div class="ff-avatar-sm" onclick="window.location='/profile'" title="Profile"
+                     style="background:linear-gradient(135deg,#6c63ff,#a78bfa);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.75rem;color:#fff;cursor:pointer;">${initials}</div>`;
+
+            actions.innerHTML = `
+                ${avatar}
+                <button class="ff-btn ff-btn-outline ff-btn-sm" onclick="Auth.logout()">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </button>`;
+        } else {
+            actions.innerHTML = `
+                <a href="/login" class="ff-btn ff-btn-outline ff-btn-sm">Login</a>
+                <a href="/register" class="ff-btn ff-btn-primary ff-btn-sm">Get Started</a>`;
+        }
+    }
+
+    // ── Guard: redirect to /login if not logged in ────────────────
+    function requireAuth() {
+        if (!Auth.isLoggedIn()) {
+            window.location.href = '/login';
+            return false;
+        }
+        return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', populateNavbar);
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
 </html>

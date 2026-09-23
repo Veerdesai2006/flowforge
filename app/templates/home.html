@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}FlowForge — Ship topics faster{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="ff-hero">
+    <div>
+        <div style="font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem;">
+            ⚡ FlowForge
+        </div>
+        <h1>Manage topics.<br>Ship faster. Together.</h1>
+        <p>A powerful Kanban-based topic management platform designed for modern teams.</p>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+            <a href="/register" class="ff-btn ff-btn-primary ff-btn-lg">
+                <i class="bi bi-rocket-takeoff"></i> Get Started Free
+            </a>
+            <a href="/login" class="ff-btn ff-btn-outline ff-btn-lg">
+                <i class="bi bi-box-arrow-in-right"></i> Sign In
+            </a>
+        </div>
+
+        <!-- Feature pills -->
+        <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;margin-top:3rem;">
+            {% for f in [("bi-kanban","Kanban Boards"),("bi-people","Team Collaboration"),("bi-shield-check","Role-Based Access"),("bi-graph-up","Progress Tracking")] %}
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:99px;padding:.4rem 1rem;font-size:.8rem;color:var(--text-secondary);display:flex;align-items:center;gap:.5rem;">
+                <i class="bi {{ f[0] }}" style="color:var(--accent);"></i> {{ f[1] }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

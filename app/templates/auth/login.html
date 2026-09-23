@@ -1,149 +1,94 @@
 {% extends "base.html" %}
-
-<!-- ====================================================== -->
-<!-- Page Title -->
-<!-- ====================================================== -->
-
-{% block title %}
-
-Login | FlowForge
-
-{% endblock %}
-
-
-<!-- ====================================================== -->
-<!-- Page Content -->
-<!-- ====================================================== -->
+{% block title %}Login — FlowForge{% endblock %}
+{% block navbar %}{% endblock %}
 
 {% block content %}
+<div class="ff-auth-page">
+    <div class="ff-auth-box">
+        <div class="ff-auth-logo">⚡ FlowForge</div>
+        <h1 class="ff-auth-title">Welcome back</h1>
+        <p class="ff-auth-sub">Sign in to your account to continue</p>
 
-<div class="row justify-content-center">
+        <div id="alertBox" class="ff-alert ff-alert-error"></div>
 
-    <div class="col-md-6 col-lg-5">
-
-        <div class="card shadow-lg border-0">
-
-            <div class="card-body p-5">
-
-                <!-- Heading -->
-
-                <h2 class="text-center fw-bold mb-2">
-
-                    Welcome Back 👋
-
-                </h2>
-
-                <p class="text-center text-muted mb-4">
-
-                    Login to your FlowForge account
-
-                </p>
-
-                <!-- Login Form -->
-
-                <form id="loginForm">
-
-                    <!-- Email -->
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-
-                            Email
-
-                        </label>
-
-                        <input
-                            type="email"
-                            id="email"
-                            class="form-control"
-                            placeholder="Enter your email"
-                            required>
-
-                    </div>
-
-                    <!-- Password -->
-
-                    <div class="mb-4">
-
-                        <label class="form-label">
-
-                            Password
-
-                        </label>
-
-                        <input
-                            type="password"
-                            id="password"
-                            class="form-control"
-                            placeholder="Enter your password"
-                            required>
-
-                    </div>
-
-                    <!-- Login Button -->
-
-                    <button
-                        type="submit"
-                        class="btn btn-primary w-100">
-
-                        Login
-
-                    </button>
-
-                </form>
-
-                <hr>
-
-                <div class="text-center">
-
-                    Don't have an account?
-
-                    <a href="/register">
-
-                        Register
-
-                    </a>
-
-                </div>
-
+        <form id="loginForm">
+            <div class="ff-form-group">
+                <label class="ff-label" for="email">Email address</label>
+                <input type="email" id="email" class="ff-input" placeholder="you@example.com" required>
+            </div>
+            <div class="ff-form-group">
+                <label class="ff-label" for="password">Password</label>
+                <input type="password" id="password" class="ff-input" placeholder="Enter your password" required>
             </div>
 
-        </div>
+            <button type="submit" class="ff-btn ff-btn-primary ff-btn-full ff-btn-lg" id="submitBtn">
+                <i class="bi bi-box-arrow-in-right"></i> Sign In
+            </button>
+        </form>
 
+        <div class="ff-divider">or</div>
+
+        <p style="text-align:center;font-size:.875rem;color:var(--text-secondary);">
+            Don't have an account?
+            <a href="/register" style="color:var(--accent);font-weight:600;text-decoration:none;"> Create one free</a>
+        </p>
     </div>
-
 </div>
-
 {% endblock %}
 
-
-<!-- ====================================================== -->
-<!-- Page JavaScript -->
-<!-- ====================================================== -->
-
 {% block scripts %}
-
 <script>
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const alert = document.getElementById('alertBox');
+    alert.className = 'ff-alert ff-alert-error';
 
-document
-    .getElementById("loginForm")
-    .addEventListener("submit", function(event){
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Signing in…';
 
-        /*
-            Prevent the browser from
-            refreshing the page.
-
-            Later we'll call our
-            FastAPI login API.
-        */
-
-        event.preventDefault();
-
-        console.log("Login button clicked.");
-
+    const body = new URLSearchParams({
+        username: document.getElementById('email').value,
+        password: document.getElementById('password').value,
     });
 
-</script>
+    try {
+        // FastAPI OAuth2 form login
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        });
 
+        if (!res.ok) {
+            const err = await res.json();
+            alert.textContent = err.detail || 'Invalid email or password.';
+            alert.classList.add('show');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
+            return;
+        }
+
+        const data = await res.json();
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('refresh_token', data.refresh_token);
+
+        // Fetch user profile and cache it
+        const meRes = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${data.access_token}` }
+        });
+        if (meRes.ok) {
+            const user = await meRes.json();
+            localStorage.setItem('ff_user', JSON.stringify(user));
+        }
+
+        window.location.href = '/dashboard';
+    } catch (err) {
+        alert.textContent = 'Network error. Please try again.';
+        alert.classList.add('show');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
+    }
+});
+</script>
 {% endblock %}

@@ -139,6 +139,10 @@ class UserResponse(UserBase):
 
     is_verified: bool
 
+    avatar_url: str | None = None
+
+    banner_url: str | None = None
+
     created_at: datetime
 
     updated_at: datetime
@@ -202,3 +206,18 @@ class UserUpdate(BaseModel):
     """
     role: UserRole | None = None
     is_active: bool | None = None
+
+# =====================================================
+# Update Profile (PATCH /me)
+# =====================================================
+
+class UserUpdateProfile(BaseModel):
+    """
+    Schema for a user updating their own profile.
+    
+    Users can only edit basic information. 
+    They CANNOT edit their role or active status.
+    """
+    first_name: str | None = Field(None, min_length=2, max_length=50)
+    last_name: str | None = Field(None, min_length=2, max_length=50)
+    email: EmailStr | None = None

@@ -14,8 +14,9 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.repositories.user import UserRepository
 from app.services.user import UserService
-from app.schemas.user import UserResponse, UserUpdate
-from app.core.dependencies import require_admin, require_super_admin
+from app.core.dependencies import require_admin, require_super_admin, get_current_user
+from app.schemas.user import UserResponse, UserUpdate, UserUpdateProfile
+from app.models.user import User
 
 # ======================================================
 # Router Setup
@@ -25,6 +26,31 @@ router = APIRouter(
     prefix="/api/users",
     tags=["Users Management"],
 )
+
+# ======================================================
+# Update Own Profile
+# ======================================================
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    update_data: UserUpdateProfile,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update the authenticated user's own profile.
+    """
+    repository = UserRepository(db)
+    service = UserService(repository)
+    
+    try:
+        updated_user = service.update_profile(current_user, update_data)
+        return updated_user
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT if "Email" in str(e) else status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 # ======================================================
 # Get All Users
@@ -87,24 +113,23 @@ def get_user(
 @router.patch("/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: int,
-    update_data: UserUpdate, # The JSON body
+    update_data: UserUpdate,
     db: Session = Depends(get_db),
-    # Only SUPER_ADMIN can promote/demote users!
-    current_super_admin = Depends(require_super_admin)
+    # Allow ADMINs to use this endpoint, but enforce limits in the service!
+    current_admin: User = Depends(require_admin)
 ):
     """
     Update a user's role or active status.
-    Only accessible by SUPER_ADMIN.
+    Access is restricted by RBAC rules in the service layer.
     """
     repository = UserRepository(db)
     service = UserService(repository)
     
     try:
-        updated_user = service.update_user(user_id, update_data)
+        updated_user = service.update_user(user_id, update_data, current_admin)
         return updated_user
     except ValueError as e:
-        # If the service raises a ValueError (like User Not Found), we return a 404
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND if "not found" in str(e).lower() else status.HTTP_403_FORBIDDEN,
             detail=str(e)
         )

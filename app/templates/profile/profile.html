@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}My Profile — FlowForge{% endblock %}
+
+{% block content %}
+<div class="ff-layout">
+    <!-- Sidebar -->
+    <aside class="ff-sidebar">
+        <a href="/dashboard" class="ff-sidebar__item">
+            <i class="bi bi-grid-1x2-fill"></i> Dashboard
+        </a>
+        <a href="/profile" class="ff-sidebar__item active">
+            <i class="bi bi-person-circle"></i> My Profile
+        </a>
+        <div class="ff-sidebar__label">Account</div>
+        <button class="ff-sidebar__item" onclick="Auth.logout()">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+    </aside>
+
+    <!-- Main -->
+    <main class="ff-main">
+        <div id="profileLoading" style="text-align:center;padding:4rem;">
+            <div class="ff-spinner"></div>
+        </div>
+
+        <div id="profileContent" style="display:none;max-width:860px;">
+
+            <!-- Profile Header Card -->
+            <div class="ff-profile-header">
+
+                <!-- Banner -->
+                <div class="ff-banner-upload-zone" title="Click to change banner">
+                    <input type="file" id="bannerInput" accept="image/*" onchange="uploadBanner(this)">
+                    <div id="bannerHint" class="ff-banner-hint">
+                        <i class="bi bi-camera"></i> Change Banner
+                    </div>
+                    <!-- Banner image or gradient placeholder -->
+                    <div id="bannerContainer"></div>
+                </div>
+
+                <!-- Avatar + Info row -->
+                <div class="ff-profile-info-row">
+
+                    <!-- Avatar with upload overlay -->
+                    <div class="ff-upload-overlay" title="Click to change photo">
+                        <input type="file" id="avatarInput" accept="image/*" onchange="uploadAvatar(this)">
+                        <div class="ff-upload-hint"><i class="bi bi-camera-fill"></i></div>
+                        <div id="avatarContainer"></div>
+                    </div>
+
+                    <div style="flex:1;margin-top:60px;">
+                        <div class="ff-profile-name" id="profileName">Loading…</div>
+                        <div class="ff-profile-email" id="profileEmail"></div>
+                        <div id="profileRole" style="margin-top:.4rem;"></div>
+                    </div>
+
+                    <div class="ff-profile-actions">
+                        <button class="ff-btn ff-btn-outline ff-btn-sm" onclick="openEditModal()">
+                            <i class="bi bi-pencil"></i> Edit Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Row -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem;">
+                <div class="ff-card" style="text-align:center;">
+                    <div style="font-size:2rem;font-weight:800;color:var(--accent);" id="statTopics">—</div>
+                    <div style="font-size:.8rem;color:var(--text-secondary);margin-top:.25rem;">Topics</div>
+                </div>
+                <div class="ff-card" style="text-align:center;">
+                    <div style="font-size:2rem;font-weight:800;color:var(--green);" id="statBoards">—</div>
+                    <div style="font-size:.8rem;color:var(--text-secondary);margin-top:.25rem;">Boards</div>
+                </div>
+                <div class="ff-card" style="text-align:center;">
+                    <div style="font-size:2rem;font-weight:800;color:var(--cyan);" id="statJoined">—</div>
+                    <div style="font-size:.8rem;color:var(--text-secondary);margin-top:.25rem;">Member Since</div>
+                </div>
+            </div>
+
+            <!-- Account Details Card -->
+            <div class="ff-card">
+                <div style="font-size:1rem;font-weight:700;margin-bottom:1.25rem;">
+                    <i class="bi bi-person-vcard" style="color:var(--accent);"></i> Account Details
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                    <div>
+                        <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;">First Name</div>
+                        <div id="detailFirst" style="margin-top:.3rem;font-weight:500;">—</div>
+                    </div>
+                    <div>
+                        <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Last Name</div>
+                        <div id="detailLast" style="margin-top:.3rem;font-weight:500;">—</div>
+                    </div>
+                    <div>
+                        <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Email</div>
+                        <div id="detailEmail" style="margin-top:.3rem;font-weight:500;">—</div>
+                    </div>
+                    <div>
+                        <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Account Status</div>
+                        <div id="detailStatus" style="margin-top:.3rem;"></div>
+                    </div>
+                    <div>
+                        <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Role</div>
+                        <div id="detailRole" style="margin-top:.3rem;"></div>
+                    </div>
+                    <div>
+                        <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Verified</div>
+                        <div id="detailVerified" style="margin-top:.3rem;"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /profileContent -->
+    </main>
+</div>
+
+<!-- Edit Profile Modal (placeholder — extend as needed) -->
+<div class="ff-modal-backdrop" id="editModal">
+    <div class="ff-modal">
+        <div class="ff-modal-header">
+            <h2 class="ff-modal-title">Edit Profile</h2>
+            <button class="ff-modal-close" onclick="closeEditModal()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <p style="color:var(--text-secondary);font-size:.875rem;margin-bottom:1.5rem;">
+            Profile editing (name changes) will be implemented in a future update.<br>
+            For now, use the avatar and banner upload buttons directly on your profile.
+        </p>
+        <button class="ff-btn ff-btn-primary ff-btn-full" onclick="closeEditModal()">Got it</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    if (!requireAuth()) { /* guard */ }
+
+    let currentUser = null;
+
+    // ── Load profile ─────────────────────────────────────────────
+    async function loadProfile() {
+        const res = await api('/api/auth/me');
+        if (!res || !res.ok) { toast('Failed to load profile.', 'error'); return; }
+
+        const user = await res.json();
+        currentUser = user;
+
+        // Cache updated user
+        localStorage.setItem('ff_user', JSON.stringify(user));
+
+        // Banner
+        const bannerContainer = document.getElementById('bannerContainer');
+        if (user.banner_url) {
+            bannerContainer.innerHTML = `<img src="${user.banner_url}" class="ff-profile-banner" id="bannerImg" alt="Profile banner">`;
+        } else {
+            bannerContainer.innerHTML = `<div class="ff-profile-banner-placeholder"></div>`;
+        }
+
+        // Avatar
+        const avatarContainer = document.getElementById('avatarContainer');
+        const initials = (user.first_name[0] + user.last_name[0]).toUpperCase();
+        if (user.avatar_url) {
+            avatarContainer.innerHTML = `<img src="${user.avatar_url}" class="ff-profile-avatar" id="avatarImg" alt="Avatar">`;
+        } else {
+            avatarContainer.innerHTML = `<div class="ff-profile-avatar-placeholder">${initials}</div>`;
+        }
+
+        // Info
+        document.getElementById('profileName').textContent  = `${user.first_name} ${user.last_name}`;
+        document.getElementById('profileEmail').textContent = user.email;
+
+        const roleBadgeClass = {
+            'SUPER_ADMIN': 'ff-badge-red',
+            'ADMIN':       'ff-badge-yellow',
+            'USER':        'ff-badge-purple',
+        }[user.role] || 'ff-badge-purple';
+        document.getElementById('profileRole').innerHTML = `<span class="ff-badge ${roleBadgeClass}">${user.role}</span>`;
+
+        // Detail fields
+        document.getElementById('detailFirst').textContent  = user.first_name;
+        document.getElementById('detailLast').textContent   = user.last_name;
+        document.getElementById('detailEmail').textContent  = user.email;
+        document.getElementById('detailStatus').innerHTML   = user.is_active
+            ? '<span class="ff-badge ff-badge-green">Active</span>'
+            : '<span class="ff-badge ff-badge-red">Inactive</span>';
+        document.getElementById('detailRole').innerHTML     = `<span class="ff-badge ${roleBadgeClass}">${user.role}</span>`;
+        document.getElementById('detailVerified').innerHTML = user.is_verified
+            ? '<span class="ff-badge ff-badge-green"><i class="bi bi-check-circle"></i> Verified</span>'
+            : '<span class="ff-badge ff-badge-yellow">Not verified</span>';
+
+        // Joined date
+        const joined = new Date(user.created_at);
+        document.getElementById('statJoined').textContent = joined.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+        // Stats
+        await loadStats();
+
+        document.getElementById('profileLoading').style.display = 'none';
+        document.getElementById('profileContent').style.display = 'block';
+    }
+
+    async function loadStats() {
+        const res = await api('/api/Topics');
+        if (!res || !res.ok) return;
+        const Topics = await res.json();
+        document.getElementById('statTopics').textContent = Topics.length;
+
+        // Count boards across all Topics
+        let totalBoards = 0;
+        await Promise.all(Topics.map(async p => {
+            const br = await api(`/api/boards/Topic/${p.id}`);
+            if (br && br.ok) {
+                const boards = await br.json();
+                totalBoards += boards.length;
+            }
+        }));
+        document.getElementById('statBoards').textContent = totalBoards;
+    }
+
+    // ── Avatar upload ────────────────────────────────────────────
+    async function uploadAvatar(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        toast('Uploading avatar…');
+
+        const token = Auth.getToken();
+        const res = await fetch('/api/upload/avatar', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            toast(err.detail || 'Upload failed.', 'error');
+            return;
+        }
+
+        const data = await res.json();
+        // Update avatar immediately
+        document.getElementById('avatarContainer').innerHTML =
+            `<img src="${data.avatar_url}?t=${Date.now()}" class="ff-profile-avatar" alt="Avatar">`;
+        toast('Avatar updated! ✅');
+
+        // Refresh cached user
+        const user = Auth.getUser();
+        if (user) { user.avatar_url = data.avatar_url; localStorage.setItem('ff_user', JSON.stringify(user)); }
+    }
+
+    // ── Banner upload ─────────────────────────────────────────────
+    async function uploadBanner(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        toast('Uploading banner…');
+
+        const token = Auth.getToken();
+        const res = await fetch('/api/upload/banner', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            toast(err.detail || 'Upload failed.', 'error');
+            return;
+        }
+
+        const data = await res.json();
+        document.getElementById('bannerContainer').innerHTML =
+            `<img src="${data.banner_url}?t=${Date.now()}" class="ff-profile-banner" alt="Banner">`;
+        toast('Banner updated! ✅');
+    }
+
+    // ── Modal ─────────────────────────────────────────────────────
+    function openEditModal()  { document.getElementById('editModal').classList.add('open'); }
+    function closeEditModal() { document.getElementById('editModal').classList.remove('open'); }
+
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+
+    loadProfile();
+</script>
+{% endblock %}

@@ -27,6 +27,7 @@ from sqlalchemy import Enum as SqlEnum
 
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
 
 from app.db.base import BaseModel
 
@@ -206,4 +207,44 @@ class User(BaseModel):
         default=False,
 
         nullable=False,
+    )
+
+    # Profile image URL (stored as a path to the uploaded file)
+    # If None, the frontend will use a default avatar.
+    avatar_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True, default=None
+    )
+
+    # Banner image URL (like YouTube channel art)
+    # If None, the frontend will use a default gradient banner.
+    banner_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True, default=None
+    )
+
+    # -------------------------------------------------
+    # Relationships
+    # -------------------------------------------------
+    
+    """
+    This creates a Python list of all projects this user owns.
+    If we type `user.projects`, SQLAlchemy will automatically
+    fetch them from the database!
+    """
+    
+    # We use quotes around "Project" to avoid circular import errors!
+    projects: Mapped[list["Project"]] = relationship(
+        "Project",
+        back_populates="owner",
+        cascade="all, delete-orphan" # If user is deleted, delete their projects too!
+    )
+    
+    assigned_tasks: Mapped[list["Task"]] = relationship(
+        "Task",
+        back_populates="assignee"
+    )
+
+    activities: Mapped[list["Activity"]] = relationship(
+        "Activity",
+        back_populates="user",
+        cascade="all, delete-orphan"
     )

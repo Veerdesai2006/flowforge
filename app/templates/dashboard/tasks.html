@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% block title %}Tasks — FlowForge{% endblock %}
+
+{% block content %}
+<div class="ff-layout">
+    <aside class="ff-sidebar">
+        <a href="javascript:history.back()" class="ff-sidebar__item">
+            <i class="bi bi-arrow-left"></i> Back to Board
+        </a>
+        <a href="/dashboard" class="ff-sidebar__item">
+            <i class="bi bi-grid-1x2-fill"></i> Topics
+        </a>
+        <div class="ff-sidebar__label">Actions</div>
+        <button class="ff-sidebar__item" onclick="openTaskModal()">
+            <i class="bi bi-plus-circle"></i> New Task
+        </button>
+        <div class="ff-sidebar__label">Account</div>
+        <button class="ff-sidebar__item" onclick="Auth.logout()">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+    </aside>
+
+    <main class="ff-main">
+        <div class="ff-page-header">
+            <div>
+                <h1 class="ff-page-title" id="pageTitle">Tasks</h1>
+                <p class="ff-page-sub">Kanban board</p>
+            </div>
+            <button class="ff-btn ff-btn-primary" onclick="openTaskModal()">
+                <i class="bi bi-plus-lg"></i> Add Task
+            </button>
+        </div>
+
+        <div id="tasksLoading" style="text-align:center;padding:3rem;">
+            <div class="ff-spinner"></div>
+        </div>
+
+        <div id="kanbanBoard" class="ff-kanban-board" style="display:none;">
+            <!-- TODO Column -->
+            <div class="ff-kanban-col">
+                <div class="ff-kanban-header">
+                    <span style="color:var(--text);display:flex;align-items:center;gap:6px;">
+                        <span class="ff-task-status-dot todo"></span> Postponed / To Do
+                    </span>
+                    <span class="ff-kanban-count" id="countTODO">0</span>
+                </div>
+                <div class="ff-kanban-cards" id="colTODO"></div>
+            </div>
+
+            <!-- IN PROGRESS Column -->
+            <div class="ff-kanban-col">
+                <div class="ff-kanban-header">
+                    <span style="color:var(--text);display:flex;align-items:center;gap:6px;">
+                        <span class="ff-task-status-dot in-progress"></span> Running
+                    </span>
+                    <span class="ff-kanban-count" id="countIN_PROGRESS">0</span>
+                </div>
+                <div class="ff-kanban-cards" id="colIN_PROGRESS"></div>
+            </div>
+
+            <!-- DONE Column -->
+            <div class="ff-kanban-col">
+                <div class="ff-kanban-header">
+                    <span style="color:var(--text);display:flex;align-items:center;gap:6px;">
+                        <span class="ff-task-status-dot done"></span> Completed
+                    </span>
+                    <span class="ff-kanban-count" id="countDONE">0</span>
+                </div>
+                <div class="ff-kanban-cards" id="colDONE"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Create Task Modal -->
+<div class="ff-modal-backdrop" id="taskModal">
+    <div class="ff-modal">
+        <div class="ff-modal-header">
+            <h2 class="ff-modal-title">Create New Task</h2>
+            <button class="ff-modal-close" onclick="closeTaskModal()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div id="modalAlert" class="ff-alert ff-alert-error"></div>
+        <form id="taskForm">
+            <div class="ff-form-group">
+                <label class="ff-label" for="taskTitle">Task Title *</label>
+                <input type="text" id="taskTitle" class="ff-input" placeholder="e.g. Update user login" required maxlength="200">
+            </div>
+            <div class="ff-form-group">
+                <label class="ff-label" for="taskDesc">Description (optional)</label>
+                <textarea id="taskDesc" class="ff-input" placeholder="Task details..." maxlength="1000"></textarea>
+            </div>
+            <div class="ff-form-group">
+                <label class="ff-label" for="taskPriority">Priority</label>
+                <select id="taskPriority" class="ff-input">
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM" selected>Medium</option>
+                    <option value="HIGH">High</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+                <button type="button" class="ff-btn ff-btn-outline" onclick="closeTaskModal()">Cancel</button>
+                <button type="submit" class="ff-btn ff-btn-primary" id="createTaskBtn">
+                    <i class="bi bi-check-lg"></i> Create Task
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    if (!requireAuth()) { /* guard */ }
+
+    // Get board_id from URL: /boards/3/tasks
+    const BOARD_ID = parseInt(window.location.pathname.split('/')[2]);
+
+    async function loadTasks() {
+        const res = await api(`/api/tasks/board/${BOARD_ID}`);
+        if (!res) return;
+
+        const tasks = await res.json();
+        
+        document.getElementById('tasksLoading').style.display = 'none';
+        document.getElementById('kanbanBoard').style.display = 'flex';
+
+        // Clear columns
+        const cols = {
+            'TODO': document.getElementById('colTODO'),
+            'IN_PROGRESS': document.getElementById('colIN_PROGRESS'),
+            'DONE': document.getElementById('colDONE')
+        };
+        const counts = { 'TODO': 0, 'IN_PROGRESS': 0, 'DONE': 0 };
+
+        Object.values(cols).forEach(el => el.innerHTML = '');
+
+        tasks.forEach(task => {
+            const status = task.status || 'TODO';
+            counts[status]++;
+            
+            const card = document.createElement('div');
+            card.className = 'ff-kanban-card';
+            
+            const pBadge = {
+                'LOW': '<span class="ff-badge ff-badge-cyan">Low</span>',
+                'MEDIUM': '<span class="ff-badge ff-badge-yellow">Medium</span>',
+                'HIGH': '<span class="ff-badge ff-badge-red">High</span>'
+            }[task.priority] || '';
+
+            // Actions mapping
+            let actionsHtml = '';
+            if (status === 'TODO') {
+                actionsHtml = `
+                    <button class="ff-btn ff-btn-ghost ff-btn-sm" title="Start Task" onclick="updateStatus(${task.id}, 'IN_PROGRESS')">
+                        <i class="bi bi-play-circle" style="color:var(--yellow)"></i> Start
+                    </button>
+                `;
+            } else if (status === 'IN_PROGRESS') {
+                actionsHtml = `
+                    <button class="ff-btn ff-btn-ghost ff-btn-sm" title="Postpone" onclick="updateStatus(${task.id}, 'TODO')">
+                        <i class="bi bi-pause-circle" style="color:var(--text3)"></i> Postpone
+                    </button>
+                    <button class="ff-btn ff-btn-ghost ff-btn-sm" title="Complete" onclick="updateStatus(${task.id}, 'DONE')">
+                        <i class="bi bi-check-circle" style="color:var(--green)"></i> Complete
+                    </button>
+                `;
+            } else if (status === 'DONE') {
+                actionsHtml = `
+                    <button class="ff-btn ff-btn-ghost ff-btn-sm" title="Reopen" onclick="updateStatus(${task.id}, 'IN_PROGRESS')">
+                        <i class="bi bi-arrow-counterclockwise" style="color:var(--yellow)"></i> Reopen
+                    </button>
+                `;
+            }
+
+            card.innerHTML = `
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                    ${pBadge}
+                    <button class="ff-btn ff-btn-ghost ff-btn-sm" onclick="deleteTask(${task.id})" style="padding:0;height:auto;">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                <div class="ff-kanban-title">${escapeHtml(task.title)}</div>
+                <div class="ff-kanban-desc">${task.description ? escapeHtml(task.description) : '<span style="color:var(--text-muted);font-style:italic;">No description</span>'}</div>
+                <div class="ff-kanban-footer">
+                    <div class="ff-kanban-actions">${actionsHtml}</div>
+                </div>
+            `;
+            
+            if (cols[status]) cols[status].appendChild(card);
+        });
+
+        document.getElementById('countTODO').textContent = counts['TODO'];
+        document.getElementById('countIN_PROGRESS').textContent = counts['IN_PROGRESS'];
+        document.getElementById('countDONE').textContent = counts['DONE'];
+    }
+
+    async function updateStatus(taskId, newStatus) {
+        const res = await api(`/api/tasks/${taskId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: newStatus })
+        });
+        if (res && res.ok) {
+            loadTasks();
+        } else {
+            toast('Failed to update task status.', 'error');
+        }
+    }
+
+    async function deleteTask(taskId) {
+        if (!confirm('Delete this task?')) return;
+        const res = await api(`/api/tasks/${taskId}`, { method: 'DELETE' });
+        if (res && res.status === 204) {
+            toast('Task deleted.');
+            loadTasks();
+        } else {
+            toast('Failed to delete task.', 'error');
+        }
+    }
+
+    function openTaskModal() {
+        document.getElementById('taskModal').classList.add('open');
+        document.getElementById('taskTitle').focus();
+    }
+
+    function closeTaskModal() {
+        document.getElementById('taskModal').classList.remove('open');
+        document.getElementById('taskForm').reset();
+        document.getElementById('modalAlert').classList.remove('show');
+    }
+
+    document.getElementById('taskForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('createTaskBtn');
+        const alertEl = document.getElementById('modalAlert');
+        alertEl.classList.remove('show');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating…';
+
+        const res = await api('/api/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                title:       document.getElementById('taskTitle').value,
+                description: document.getElementById('taskDesc').value || null,
+                priority:    document.getElementById('taskPriority').value,
+                board_id:    BOARD_ID,
+            })
+        });
+
+        if (!res || !res.ok) {
+            const err = await res?.json();
+            alertEl.textContent = err?.detail || 'Failed to create task.';
+            alertEl.classList.add('show');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Create Task';
+            return;
+        }
+
+        toast('Task created!');
+        closeTaskModal();
+        loadTasks();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Create Task';
+    });
+
+    document.getElementById('taskModal').addEventListener('click', function(e) {
+        if (e.target === this) closeTaskModal();
+    });
+
+    function escapeHtml(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    loadTasks();
+</script>
+{% endblock %}
