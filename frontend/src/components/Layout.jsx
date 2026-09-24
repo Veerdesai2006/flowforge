@@ -2,10 +2,16 @@ import React, { useContext } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { LayoutDashboard, User, LogOut, ArrowLeft, PlusCircle } from 'lucide-react';
+import AiChatbot from './AiChatbot';
 
 const Layout = () => {
   const { user, logout } = useContext(AuthContext);
   const location = useLocation();
+
+  // Extract boardId from the URL if we're on a board's task page.
+  // URL pattern: /boards/:boardId/tasks
+  const boardMatch = location.pathname.match(/\/boards\/(\d+)\/tasks/);
+  const currentBoardId = boardMatch ? boardMatch[1] : null;
 
   if (!user) return null;
 
@@ -59,6 +65,9 @@ const Layout = () => {
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         <Outlet />
       </main>
+
+      {/* AI Chatbot Widget — passes boardId when on a task board page */}
+      <AiChatbot boardId={currentBoardId} />
     </div>
   );
 };

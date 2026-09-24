@@ -17,6 +17,7 @@ from app.api.boards import router as boards_router
 from app.api.tasks import router as tasks_router
 from app.api.upload import router as upload_router
 from app.api.dashboards import router as dashboards_router
+from app.api.ai import router as ai_router
 
 app = FastAPI(title="FlowForge", version="1.0.0")
 
@@ -38,5 +39,6 @@ app.include_router(boards_router)
 app.include_router(tasks_router)
 app.include_router(upload_router)
 app.include_router(dashboards_router)
+app.include_router(ai_router)
 
 templates = Jinja2Templates(directory="app/templates")

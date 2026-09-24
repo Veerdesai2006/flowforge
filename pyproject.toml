@@ -25,4 +25,6 @@ dependencies = [
     "redis>=8.1.0",
     "sqlalchemy>=2.0.52",
     "uvicorn[standard]>=0.52.4",
+    "google-genai>=1.0.0",
+    "pgvector>=0.3.6",
 ]

@@ -6,6 +6,7 @@ from app.repositories.project import ProjectRepository
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.activity import ActivityService
 from app.repositories.activity import ActivityRepository
+from app.services.ingestion import IngestionService
 
 class TaskService:
     def __init__(self, task_repo: TaskRepository, board_repo: BoardRepository, project_repo: ProjectRepository):
@@ -13,6 +14,8 @@ class TaskService:
         self.board_repo = board_repo
         self.project_repo = project_repo
         self.activity_service = ActivityService(ActivityRepository(task_repo.db))
+        # We also create an IngestionService so we can automatically embed tasks.
+        self.ingestion_service = IngestionService(task_repo.db)
 
     def _verify_board_access(self, board_id: int, user: User):
         board = self.board_repo.get_by_id(board_id)
@@ -37,6 +40,10 @@ class TaskService:
             action="Created Task",
             description=f"Created task '{created.title}'"
         )
+        
+        # INGESTION: After successfully creating a task, we send it to the AI for embedding!
+        self.ingestion_service.index_task(created)
+        
         return created
 
     def get_board_tasks(
@@ -90,6 +97,9 @@ class TaskService:
                 description=f"Updated task '{updated.title}'"
             )
             
+        # INGESTION: We re-index the task because its text might have changed!
+        self.ingestion_service.index_task(updated)
+            
         return updated
 
     def delete_task(self, task_id: int, user: User) -> None:
@@ -103,3 +113,6 @@ class TaskService:
             action="Deleted Task",
             description=f"Deleted task '{task.title}'"
         )
+        
+        # INGESTION: We delete the embedding since the task no longer exists!
+        self.ingestion_service.remove_task(task_id)

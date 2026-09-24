@@ -15,27 +15,7 @@ const StatCard = ({ icon: Icon, title, value, color }) => (
   </div>
 );
 
-const ActivityFeed = ({ activities }) => {
-  if (!activities || activities.length === 0) {
-    return <div className="text-text3 text-sm italic">No recent activity.</div>;
-  }
-  return (
-    <div className="space-y-4">
-      {activities.map((act) => (
-        <div key={act.id} className="flex gap-4 p-4 rounded-xl bg-bg3 border border-border">
-          <div className="p-2 bg-accent2/20 text-accent2 rounded-lg h-fit">
-            <Activity size={16} />
-          </div>
-          <div>
-            <div className="text-sm font-bold text-textMain">{act.action}</div>
-            {act.description && <div className="text-sm text-text2 mt-1">{act.description}</div>}
-            <div className="text-xs text-text3 mt-2">{new Date(act.created_at).toLocaleString()}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
+import ActivityFeed from '../components/ActivityFeed';
 
 const Dashboard = () => {
   const { user } = useContext(AuthContext);
@@ -84,12 +64,12 @@ const Dashboard = () => {
             <StatCard icon={Clock} title="Running Tasks" value={data.running_tasks} color="bg-accent2" />
           </div>
           
-          <div className="bg-bg2 p-6 rounded-2xl border border-border">
-            <h2 className="text-xl font-bold text-textMain mb-6 flex items-center gap-2">
-              <Activity className="text-accent2" /> My Recent Activity
-            </h2>
-            <ActivityFeed activities={data.recent_activity} />
-          </div>
+          <ActivityFeed 
+            title="My Recent Activity" 
+            activities={data.recent_activity || []} 
+            pageSize={10} 
+            maxHeight="460px" 
+          />
         </div>
       )}
 
@@ -103,12 +83,12 @@ const Dashboard = () => {
             <StatCard icon={UserPlus} title="Recent Joins" value={data.recent_users} color="bg-accent2" />
           </div>
           
-          <div className="bg-bg2 p-6 rounded-2xl border border-border">
-            <h2 className="text-xl font-bold text-textMain mb-6 flex items-center gap-2">
-              <Activity className="text-accent2" /> System Activity (Users)
-            </h2>
-            <ActivityFeed activities={data.permitted_activity} />
-          </div>
+          <ActivityFeed 
+            title="System Activity (Users)" 
+            activities={data.permitted_activity || []} 
+            pageSize={10} 
+            maxHeight="460px" 
+          />
         </div>
       )}
 
@@ -122,12 +102,12 @@ const Dashboard = () => {
             <StatCard icon={CheckCircle} title="Active Accounts" value={data.active_users} color="bg-green-500" />
           </div>
           
-          <div className="bg-bg2 p-6 rounded-2xl border border-border">
-            <h2 className="text-xl font-bold text-textMain mb-6 flex items-center gap-2">
-              <Activity className="text-accent2" /> Global System Activity
-            </h2>
-            <ActivityFeed activities={data.recent_activity} />
-          </div>
+          <ActivityFeed 
+            title="Global System Activity" 
+            activities={data.recent_activity || []} 
+            pageSize={10} 
+            maxHeight="460px" 
+          />
         </div>
       )}
 

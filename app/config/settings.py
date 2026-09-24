@@ -115,6 +115,16 @@ class Settings(BaseSettings):
     smtp_from: Optional[str] = None
 
     # ======================================================
+    # AI / Gemini
+    # ======================================================
+
+    # The API key for Google Gemini AI.
+    # Optional because the AI chatbot feature is optional —
+    # the rest of the app works fine without it.
+    # The value comes from GEMINI_API_KEY in the .env file.
+    gemini_api_key: Optional[str] = None
+
+    # ======================================================
     # Pydantic Settings Configuration
     # ======================================================
 
