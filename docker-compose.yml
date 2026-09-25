@@ -1,0 +1,32 @@
+version: '3.8'
+
+# =========================================================
+# FlowForge - Local Infrastructure
+# =========================================================
+# We use Docker Compose to spin up a local PostgreSQL instance 
+# that comes pre-configured with the pgvector extension. 
+# This ensures a consistent environment across all developer machines.
+
+services:
+  db:
+    # We use the official pgvector image which is based on postgres.
+    image: pgvector/pgvector:pg16
+    container_name: flowforge_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: veer
+      POSTGRES_DB: flowforge
+    ports:
+      # Expose PostgreSQL on port 5433 to avoid clashing with any 
+      # existing local PostgreSQL installations running on 5432.
+      - "5433:5432"
+    volumes:
+      # Persist database data locally so it isn't lost when the container stops
+      - flowforge_pgdata:/var/lib/postgresql/data
+    restart: always
+
+  # NOTE: Future services like Redis (for Semantic Caching) or Ollama (for LLM)
+  # could also be added to this compose file.
+
+volumes:
+  flowforge_pgdata:
